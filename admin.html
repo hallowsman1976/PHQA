@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="theme-color" content="#1D4ED8" />
+  <title>Admin — PHQ-A Dashboard</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- TailwindCSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- SweetAlert2 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { thai: ['"Noto Sans Thai"', 'sans-serif'] },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    * { font-family: 'Noto Sans Thai', sans-serif; }
+
+    body {
+      background: linear-gradient(135deg, #1E3A8A 0%, #1D4ED8 50%, #2563EB 100%);
+      min-height: 100vh;
+    }
+
+    .glass {
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.7);
+      box-shadow: 0 8px 32px rgba(29,78,216,0.12);
+    }
+
+    .glass-sm {
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.5);
+    }
+
+    /* Page transitions */
+    #login-page  { animation: fadeIn 0.35s ease; }
+    #dashboard   { animation: fadeIn 0.35s ease; display: none; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+
+    /* Table */
+    .tbl { width:100%; border-collapse:separate; border-spacing:0; }
+    .tbl th { background:#F8FAFF; color:#64748B; font-weight:600; font-size:0.75rem;
+               padding:10px 12px; text-align:left; position:sticky; top:0; white-space:nowrap; }
+    .tbl td { padding:11px 12px; font-size:0.8rem; border-bottom:1px solid #F1F5F9;
+               vertical-align:middle; white-space:nowrap; }
+    .tbl tr:hover td { background:#F8FAFF; cursor:pointer; }
+    .tbl tr:last-child td { border-bottom:none; }
+
+    /* Alert level badges */
+    .badge-critical { background:#FEF2F2; color:#991B1B; border:1px solid #FECACA; }
+    .badge-high     { background:#FFF7ED; color:#9A3412; border:1px solid #FED7AA; }
+    .badge-moderate { background:#FFFBEB; color:#92400E; border:1px solid #FDE68A; }
+    .badge-normal   { background:#F0FDF4; color:#065F46; border:1px solid #A7F3D0; }
+
+    /* Status badges */
+    .status-pending   { background:#FFF7ED; color:#C2410C; border:1px solid #FED7AA; }
+    .status-contacted { background:#EFF6FF; color:#1D4ED8; border:1px solid #BFDBFE; }
+    .status-done      { background:#F0FDF4; color:#065F46; border:1px solid #A7F3D0; }
+    .status-referred  { background:#F5F3FF; color:#6D28D9; border:1px solid #DDD6FE; }
+    .status-normal    { background:#F8FAFC; color:#64748B; border:1px solid #E2E8F0; }
+
+    /* Input */
+    input:focus, select:focus, textarea:focus {
+      outline:none; box-shadow:0 0 0 3px rgba(59,130,246,0.2);
+    }
+
+    /* Modal */
+    #modal-overlay {
+      display:none;
+      position:fixed; inset:0; background:rgba(0,0,0,0.5);
+      z-index:100; align-items:center; justify-content:center; padding:16px;
+    }
+    #modal-overlay.open { display:flex; animation:fadeIn 0.2s ease; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width:5px; height:5px; }
+    ::-webkit-scrollbar-thumb { background:#CBD5E1; border-radius:99px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+  </style>
+</head>
+
+<body>
+
+<!-- ============================================================
+     LOGIN PAGE
+============================================================ -->
+<div id="login-page" class="min-h-screen flex items-center justify-center p-4">
+  <div class="glass rounded-3xl p-8 w-full max-w-sm">
+    <div class="text-center mb-8">
+      <div class="w-16 h-16 bg-blue-100 rounded-3xl flex items-center justify-center text-3xl mx-auto mb-4">🧠</div>
+      <h1 class="text-xl font-bold text-gray-800">PHQ-A Admin</h1>
+      <p class="text-gray-500 text-sm mt-1">ระบบจัดการคัดกรองภาวะซึมเศร้า</p>
+    </div>
+
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1.5">ชื่อผู้ใช้</label>
+        <input id="login-username" type="text" autocomplete="username"
+          placeholder="username"
+          class="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm text-gray-800 placeholder-gray-400 transition focus:border-blue-400" />
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1.5">รหัสผ่าน</label>
+        <div class="relative">
+          <input id="login-password" type="password" autocomplete="current-password"
+            placeholder="password"
+            class="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm text-gray-800 placeholder-gray-400 transition focus:border-blue-400 pr-12" />
+          <button type="button" onclick="togglePwd()"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg">👁️</button>
+        </div>
+      </div>
+      <p id="login-error" class="text-sm text-red-500 text-center hidden"></p>
+      <button onclick="doLogin()"
+        class="w-full py-3.5 bg-gradient-to-r from-blue-700 to-blue-500 text-white font-semibold rounded-2xl shadow-lg shadow-blue-200 active:scale-95 transition text-sm">
+        เข้าสู่ระบบ
+      </button>
+    </div>
+
+    <p class="text-center text-xs text-gray-400 mt-6 leading-relaxed">
+      ระบบนี้สำหรับเจ้าหน้าที่ที่ได้รับอนุญาตเท่านั้น<br/>
+      ข้อมูลทั้งหมดเป็นความลับ
+    </p>
+  </div>
+</div>
+
+<!-- ============================================================
+     DASHBOARD
+============================================================ -->
+<div id="dashboard">
+
+  <!-- HEADER -->
+  <header class="sticky top-0 z-40 bg-blue-800/90 backdrop-blur border-b border-white/10">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
+      <div class="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center text-xl">🧠</div>
+      <div class="flex-1 min-w-0">
+        <h1 class="text-white font-bold text-sm truncate">PHQ-A Dashboard</h1>
+        <p class="text-white/60 text-xs truncate">ระบบคัดกรองภาวะซึมเศร้าในวัยรุ่น</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="text-right hidden sm:block">
+          <p id="admin-name" class="text-white/90 text-xs font-semibold"></p>
+          <p class="text-white/50 text-[10px]">ผู้ดูแลระบบ</p>
+        </div>
+        <button onclick="doLogout()"
+          class="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-semibold transition">
+          ออก
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- BODY -->
+  <div class="max-w-7xl mx-auto px-4 py-5 space-y-5">
+
+    <!-- ===== STATS CARDS ===== -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div onclick="filterByLevel('all')" class="glass rounded-2xl p-4 text-center cursor-pointer hover:shadow-lg transition active:scale-95">
+        <div class="text-2xl font-bold text-blue-700" id="stat-total">—</div>
+        <div class="text-xs text-gray-500 mt-0.5 font-medium">ทั้งหมด</div>
+      </div>
+      <div onclick="filterByLevel('normal')" class="glass rounded-2xl p-4 text-center cursor-pointer hover:shadow-lg transition active:scale-95">
+        <div class="text-2xl font-bold text-emerald-600" id="stat-no">—</div>
+        <div class="text-xs text-gray-500 mt-0.5 font-medium">ปกติ (0-4)</div>
+      </div>
+      <div onclick="filterByLevel('mild')" class="glass rounded-2xl p-4 text-center cursor-pointer hover:shadow-lg transition active:scale-95">
+        <div class="text-2xl font-bold text-amber-500" id="stat-mild">—</div>
+        <div class="text-xs text-gray-500 mt-0.5 font-medium">เล็กน้อย (5-9)</div>
+      </div>
+      <div onclick="filterByLevel('Moderate')" class="glass rounded-2xl p-4 text-center cursor-pointer hover:shadow-lg transition active:scale-95">
+        <div class="text-2xl font-bold text-orange-500" id="stat-moderate">—</div>
+        <div class="text-xs text-gray-500 mt-0.5 font-medium">ปานกลาง</div>
+      </div>
+      <div onclick="filterByLevel('High')" class="glass rounded-2xl p-4 text-center cursor-pointer hover:shadow-lg transition active:scale-95">
+        <div class="text-2xl font-bold text-rose-600" id="stat-high">—</div>
+        <div class="text-xs text-gray-500 mt-0.5 font-medium">มาก</div>
+      </div>
+      <div onclick="filterByLevel('Critical')" class="glass rounded-2xl p-4 text-center cursor-pointer hover:shadow-lg transition active:scale-95">
+        <div class="text-2xl font-bold text-red-700" id="stat-critical">—</div>
+        <div class="text-xs text-gray-500 mt-0.5 font-medium">รุนแรง/เสี่ยง</div>
+      </div>
+    </div>
+
+    <!-- Status row -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div onclick="filterByStatus('รอติดต่อ')" class="glass-sm rounded-2xl p-3 flex items-center gap-3 cursor-pointer hover:shadow-md transition">
+        <div class="w-9 h-9 bg-orange-100 rounded-xl flex items-center justify-center text-lg">⏳</div>
+        <div><div id="stat-pending" class="text-lg font-bold text-orange-600">—</div><div class="text-xs text-gray-500">รอติดต่อ</div></div>
+      </div>
+      <div onclick="filterByStatus('ติดต่อแล้ว')" class="glass-sm rounded-2xl p-3 flex items-center gap-3 cursor-pointer hover:shadow-md transition">
+        <div class="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center text-lg">📞</div>
+        <div><div id="stat-contacted" class="text-lg font-bold text-blue-600">—</div><div class="text-xs text-gray-500">ติดต่อแล้ว</div></div>
+      </div>
+      <div onclick="filterByStatus('ดูแลแล้ว')" class="glass-sm rounded-2xl p-3 flex items-center gap-3 cursor-pointer hover:shadow-md transition">
+        <div class="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center text-lg">✅</div>
+        <div><div id="stat-completed" class="text-lg font-bold text-emerald-600">—</div><div class="text-xs text-gray-500">ดูแลแล้ว</div></div>
+      </div>
+      <div onclick="filterByStatus('ส่งต่อ')" class="glass-sm rounded-2xl p-3 flex items-center gap-3 cursor-pointer hover:shadow-md transition">
+        <div class="w-9 h-9 bg-purple-100 rounded-xl flex items-center justify-center text-lg">🏥</div>
+        <div><div id="stat-referred" class="text-lg font-bold text-purple-600">—</div><div class="text-xs text-gray-500">ส่งต่อ</div></div>
+      </div>
+    </div>
+
+    <!-- ===== FILTER BAR ===== -->
+    <div class="glass rounded-2xl p-4">
+      <div class="flex flex-wrap gap-3">
+        <!-- Search -->
+        <div class="flex-1 min-w-[200px]">
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+            <input id="search-input" type="search" placeholder="ค้นหา ชื่อ / โรงเรียน / เบอร์ / รหัส"
+              class="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 focus:border-blue-400 transition"
+              oninput="applyFilters()" />
+          </div>
+        </div>
+        <!-- AlertLevel filter -->
+        <select id="filter-level" onchange="applyFilters()"
+          class="px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 focus:border-blue-400 transition">
+          <option value="all">ทุกระดับ</option>
+          <option value="Critical">Critical 🚨</option>
+          <option value="High">High ⚠️</option>
+          <option value="Moderate">Moderate</option>
+          <option value="">ปกติ/เล็กน้อย</option>
+        </select>
+        <!-- Status filter -->
+        <select id="filter-status" onchange="applyFilters()"
+          class="px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 focus:border-blue-400 transition">
+          <option value="all">ทุกสถานะ</option>
+          <option value="รอติดต่อ">รอติดต่อ</option>
+          <option value="ติดต่อแล้ว">ติดต่อแล้ว</option>
+          <option value="ดูแลแล้ว">ดูแลแล้ว</option>
+          <option value="ส่งต่อ">ส่งต่อ</option>
+          <option value="ปกติ">ปกติ</option>
+        </select>
+        <!-- Refresh -->
+        <button onclick="loadAll()"
+          class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition active:scale-95">
+          🔄 รีเฟรช
+        </button>
+      </div>
+      <div id="filter-summary" class="mt-2 text-xs text-gray-500"></div>
+    </div>
+
+    <!-- ===== TABLE ===== -->
+    <div class="glass rounded-2xl overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>วันที่</th>
+              <th>รหัส</th>
+              <th>ชื่อ-สกุล</th>
+              <th>อายุ</th>
+              <th>โรงเรียน</th>
+              <th>เบอร์</th>
+              <th>คะแนน</th>
+              <th>แปลผล</th>
+              <th>ระดับ</th>
+              <th>สถานะ</th>
+              <th>ดำเนินการ</th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <tr>
+              <td colspan="11" class="text-center py-12 text-gray-400">
+                <div class="text-4xl mb-2">📂</div>
+                <div>ยังไม่มีข้อมูล</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="table-footer" class="px-4 py-3 bg-gray-50 border-t border-gray-100 text-xs text-gray-500"></div>
+    </div>
+
+  </div><!-- /max-w-7xl -->
+</div><!-- /dashboard -->
+
+<!-- ============================================================
+     MODAL: Case Detail / Edit
+============================================================ -->
+<div id="modal-overlay" onclick="closeModal(event)">
+  <div class="glass w-full max-w-lg rounded-3xl overflow-hidden max-h-[90vh] flex flex-col" onclick="event.stopPropagation()">
+    <!-- Modal Header -->
+    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-white/60">
+      <div>
+        <h3 class="font-bold text-gray-800 text-base" id="modal-title">รายละเอียดเคส</h3>
+        <p id="modal-record-id" class="text-xs text-gray-500 mt-0.5"></p>
+      </div>
+      <button onclick="closeModal()" class="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-xl flex items-center justify-center text-gray-500 transition text-sm">✕</button>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="overflow-y-auto flex-1 p-5 space-y-4">
+
+      <!-- Alert Level Badge -->
+      <div id="modal-alert-banner" class="rounded-2xl p-3 text-center hidden">
+        <div id="modal-alert-text" class="font-bold text-sm"></div>
+      </div>
+
+      <!-- ข้อมูลพื้นฐาน -->
+      <div class="bg-blue-50 rounded-2xl p-4">
+        <h4 class="text-xs font-bold text-blue-700 uppercase tracking-wide mb-3">ข้อมูลผู้รับการประเมิน</h4>
+        <div class="grid grid-cols-2 gap-2 text-sm">
+          <div><span class="text-gray-500 text-xs">ชื่อ-สกุล</span><p id="m-name" class="font-semibold text-gray-800 mt-0.5"></p></div>
+          <div><span class="text-gray-500 text-xs">อายุ</span><p id="m-age" class="font-semibold text-gray-800 mt-0.5"></p></div>
+          <div><span class="text-gray-500 text-xs">เพศ</span><p id="m-gender" class="font-semibold text-gray-800 mt-0.5"></p></div>
+          <div><span class="text-gray-500 text-xs">วันที่ประเมิน</span><p id="m-timestamp" class="font-semibold text-gray-800 mt-0.5"></p></div>
+          <div><span class="text-gray-500 text-xs">โรงเรียน</span><p id="m-school" class="font-semibold text-gray-800 mt-0.5"></p></div>
+          <div><span class="text-gray-500 text-xs">เบอร์โทร</span><p id="m-phone" class="font-semibold text-gray-800 mt-0.5"></p></div>
+        </div>
+      </div>
+
+      <!-- คะแนน PHQ-A -->
+      <div class="bg-gray-50 rounded-2xl p-4">
+        <h4 class="text-xs font-bold text-gray-600 uppercase tracking-wide mb-3">ผลการประเมิน PHQ-A</h4>
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-gray-600 text-sm">คะแนนรวม (Q1-Q9)</span>
+          <span id="m-score" class="text-2xl font-bold text-blue-700"></span>
+        </div>
+        <div id="m-interp" class="text-center py-2 rounded-xl text-sm font-semibold mb-3"></div>
+        <!-- Q1-Q9 scores mini grid -->
+        <div class="grid grid-cols-9 gap-1 mb-3">
+          <div id="m-q1" class="text-center bg-white rounded-lg p-1.5"><div class="text-xs text-gray-400">Q1</div><div class="font-bold text-sm text-gray-700"></div></div>
+          <div id="m-q2" class="text-center bg-white rounded-lg p-1.5"><div class="text-xs text-gray-400">Q2</div><div class="font-bold text-sm text-gray-700"></div></div>
+          <div id="m-q3" class="text-center bg-white rounded-lg p-1.5"><div class="text-xs text-gray-400">Q3</div><div class="font-bold text-sm text-gray-700"></div></div>
+          <div id="m-q4" class="text-center bg-white rounded-lg p-1.5"><div class="text-xs text-gray-400">Q4</div><div class="font-bold text-sm text-gray-700"></div></div>
+          <div id="m-q5" class="text-center bg-white rounded-lg p-1.5"><div class="text-xs text-gray-400">Q5</div><div class="font-bold text-sm text-gray-700"></div></div>
+          <div id="m-q6" class="text-center bg-white rounded-lg p-1.5"><div class="text-xs text-gray-400">Q6</div><div class="font-bold text-sm text-gray-700"></div></div>
+          <div id="m-q7" class="text-center bg-white rounded-lg p-1.5"><div class="text-xs text-gray-400">Q7</div><div class="font-bold text-sm text-gray-700"></div></div>
+          <div id="m-q8" class="text-center bg-white rounded-lg p-1.5"><div class="text-xs text-gray-400">Q8</div><div class="font-bold text-sm text-gray-700"></div></div>
+          <div id="m-q9" class="text-center bg-white rounded-lg p-1.5 border-2 border-red-200"><div class="text-xs text-red-400">Q9⚠</div><div class="font-bold text-sm text-red-600"></div></div>
+        </div>
+        <!-- คำถามเสี่ยง -->
+        <div class="grid grid-cols-1 gap-2 text-sm">
+          <div class="flex items-center justify-between bg-white rounded-xl px-3 py-2">
+            <span class="text-gray-600 text-xs">💭 คิดอยากตายใน 1 เดือน</span>
+            <span id="m-q10" class="font-semibold"></span>
+          </div>
+          <div class="flex items-center justify-between bg-white rounded-xl px-3 py-2">
+            <span class="text-gray-600 text-xs">⛔ เคยพยายามฆ่าตัวตาย</span>
+            <span id="m-q11" class="font-semibold"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- LINE Alert status -->
+      <div class="flex items-center justify-between bg-purple-50 rounded-2xl px-4 py-3">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">💬</span>
+          <div>
+            <p class="text-xs font-semibold text-purple-700">แจ้งเตือน LINE</p>
+            <p id="m-alert-sent" class="text-xs text-gray-500 mt-0.5"></p>
+          </div>
+        </div>
+        <span id="m-alert-badge" class="text-xs font-bold px-2 py-1 rounded-full"></span>
+      </div>
+
+      <!-- อัปเดตสถานะ -->
+      <div class="bg-emerald-50 rounded-2xl p-4">
+        <h4 class="text-xs font-bold text-emerald-700 uppercase tracking-wide mb-3">อัปเดตสถานะการดูแล</h4>
+        <div class="mb-3">
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">สถานะ</label>
+          <select id="modal-status"
+            class="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 focus:border-blue-400 transition">
+            <option value="รอติดต่อ">⏳ รอติดต่อ</option>
+            <option value="ติดต่อแล้ว">📞 ติดต่อแล้ว</option>
+            <option value="ดูแลแล้ว">✅ ดูแลแล้ว</option>
+            <option value="ส่งต่อ">🏥 ส่งต่อโรงพยาบาล</option>
+            <option value="ปกติ">✓ ปกติ ไม่ต้องติดตาม</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">บันทึกเจ้าหน้าที่</label>
+          <textarea id="modal-note" rows="3" placeholder="บันทึกการติดตาม หรือรายละเอียดเพิ่มเติม..."
+            class="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 placeholder-gray-400 focus:border-blue-400 transition resize-none"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="flex gap-3 px-5 py-4 border-t border-gray-100 bg-white/60">
+      <button onclick="closeModal()"
+        class="flex-1 py-2.5 border-2 border-gray-200 text-gray-600 font-semibold rounded-2xl text-sm transition active:scale-95">
+        ยกเลิก
+      </button>
+      <button id="modal-save-btn" onclick="saveCase()"
+        class="flex-[2] py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-semibold rounded-2xl text-sm shadow-md shadow-emerald-200 transition active:scale-95">
+        บันทึกสถานะ
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCRIPTS
+============================================================ -->
+<script>
+// ============================================================
+// ⚙️ ตั้งค่า: ใส่ URL Web App ของคุณที่นี่
+// (ได้จาก Google Apps Script → Deploy → Web App URL)
+// ============================================================
+const GAS_URL = 'YOUR_WEBAPP_URL_HERE';
+
+// ============================================================
+// State
+// ============================================================
+let sessionToken   = localStorage.getItem('phqa_token')   || '';
+let sessionName    = localStorage.getItem('phqa_name')    || '';
+let allData        = [];
+let currentRecord  = null;
+
+// ============================================================
+// RPC Helper (text/plain เพื่อหลีกเลี่ยง CORS preflight)
+// ============================================================
+async function rpc(fn, args) {
+  if (!GAS_URL || GAS_URL === 'YOUR_WEBAPP_URL_HERE') {
+    throw new Error('กรุณาตั้งค่า GAS_URL ในไฟล์ admin.html');
+  }
+  const res  = await fetch(GAS_URL, {
+    method:   'POST',
+    headers:  { 'Content-Type': 'text/plain;charset=utf-8' },
+    body:     JSON.stringify({ fn: fn, args: args || [], token: sessionToken }),
+    redirect: 'follow',
+  });
+  const text = await res.text();
+  if (!text || text.trim().startsWith('<')) {
+    throw new Error('GAS ตอบกลับผิดรูปแบบ — ตรวจสอบ Deploy Settings (Execute as: Me, Anyone can access)');
+  }
+  return JSON.parse(text);
+}
+
+// ============================================================
+// Login
+// ============================================================
+document.getElementById('login-password').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') doLogin();
+});
+document.getElementById('login-username').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') document.getElementById('login-password').focus();
+});
+
+function togglePwd() {
+  const inp = document.getElementById('login-password');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+async function doLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl    = document.getElementById('login-error');
+  errEl.classList.add('hidden');
+
+  if (!username || !password) {
+    errEl.textContent = 'กรุณากรอก Username และ Password';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  Swal.fire({ title:'กำลังเข้าสู่ระบบ...', allowOutsideClick:false, didOpen:()=>Swal.showLoading() });
+
+  try {
+    const data = await rpc('login', [username, password]);
+    Swal.close();
+
+    if (data.ok) {
+      sessionToken = data.token;
+      sessionName  = data.displayName;
+      localStorage.setItem('phqa_token', data.token);
+      localStorage.setItem('phqa_name',  data.displayName);
+      showDashboard();
+    } else {
+      errEl.textContent = data.message || 'เข้าสู่ระบบไม่สำเร็จ';
+      errEl.classList.remove('hidden');
+    }
+  } catch (err) {
+    Swal.close();
+    errEl.textContent = err.message;
+    errEl.classList.remove('hidden');
+  }
+}
+
+function doLogout() {
+  Swal.fire({
+    title: 'ออกจากระบบ?',
+    icon:  'question',
+    showCancelButton:    true,
+    confirmButtonText:   'ออกจากระบบ',
+    cancelButtonText:    'ยกเลิก',
+    confirmButtonColor:  '#EF4444',
+  }).then(function(r) {
+    if (r.isConfirmed) {
+      localStorage.removeItem('phqa_token');
+      localStorage.removeItem('phqa_name');
+      sessionToken = '';
+      document.getElementById('dashboard').style.display   = 'none';
+      document.getElementById('login-page').style.display  = 'flex';
+      document.getElementById('login-password').value = '';
+    }
+  });
+}
+
+// ============================================================
+// Dashboard
+// ============================================================
+function showDashboard() {
+  document.getElementById('login-page').style.display  = 'none';
+  document.getElementById('dashboard').style.display   = 'block';
+  document.getElementById('admin-name').textContent    = sessionName;
+  loadAll();
+}
+
+async function loadAll() {
+  try {
+    // โหลด dashboard stats และ responses พร้อมกัน
+    const [statsRes, dataRes] = await Promise.all([
+      rpc('getDashboard', []),
+      rpc('getResponses', [{}]),
+    ]);
+
+    if (statsRes.ok) renderStats(statsRes.stats);
+    else if (statsRes.message && statsRes.message.includes('Session')) { handleSessionExpired(); return; }
+
+    if (dataRes.ok) {
+      allData = dataRes.data || [];
+      renderTable(allData);
+    }
+  } catch (err) {
+    Swal.fire({ icon:'error', title:'โหลดข้อมูลไม่สำเร็จ', text:err.message, confirmButtonColor:'#1D4ED8' });
+  }
+}
+
+function handleSessionExpired() {
+  localStorage.removeItem('phqa_token');
+  localStorage.removeItem('phqa_name');
+  Swal.fire({
+    icon: 'warning',
+    title: 'Session หมดอายุ',
+    text: 'กรุณาเข้าสู่ระบบใหม่',
+    confirmButtonColor: '#1D4ED8',
+  }).then(function() {
+    document.getElementById('dashboard').style.display  = 'none';
+    document.getElementById('login-page').style.display = 'flex';
+  });
+}
+
+// ============================================================
+// Render Stats
+// ============================================================
+function renderStats(s) {
+  document.getElementById('stat-total').textContent    = s.total     || 0;
+  document.getElementById('stat-no').textContent       = s.noDepression || 0;
+  document.getElementById('stat-mild').textContent     = s.mild      || 0;
+  document.getElementById('stat-moderate').textContent = s.moderate  || 0;
+  document.getElementById('stat-high').textContent     = s.high      || 0;
+  document.getElementById('stat-critical').textContent = s.critical  || 0;
+  document.getElementById('stat-pending').textContent  = s.pending   || 0;
+  document.getElementById('stat-contacted').textContent= s.contacted || 0;
+  document.getElementById('stat-completed').textContent= s.completed || 0;
+  document.getElementById('stat-referred').textContent = s.referred  || 0;
+}
+
+// ============================================================
+// Render Table
+// ============================================================
+function renderTable(rows) {
+  const tbody = document.getElementById('table-body');
+  const footer = document.getElementById('table-footer');
+
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="11" class="text-center py-12 text-gray-400">
+      <div class="text-4xl mb-2">📂</div><div>ไม่พบข้อมูล</div></td></tr>`;
+    footer.textContent = 'ไม่พบข้อมูลที่ตรงกับเงื่อนไข';
+    return;
+  }
+
+  tbody.innerHTML = rows.map(function(r) {
+    const alertBadge  = alertLevelBadge(r.AlertLevel);
+    const statusBadge = statusBadgeHtml(r.Status);
+    const scoreColor  = r.TotalScore >= 20 ? 'text-red-700 font-bold' :
+                        r.TotalScore >= 15 ? 'text-rose-600 font-bold' :
+                        r.TotalScore >= 10 ? 'text-orange-600 font-semibold' :
+                        r.TotalScore >=  5 ? 'text-amber-600' : 'text-emerald-600';
+    return `<tr onclick="openModal('${r.RecordID}')">
+      <td class="text-gray-500 text-xs">${r.Timestamp || '-'}</td>
+      <td class="text-gray-500 text-xs font-mono">${r.RecordID || '-'}</td>
+      <td class="font-semibold text-gray-800">${r.FullName || '-'}</td>
+      <td class="text-gray-600">${r.Age || '-'}</td>
+      <td class="text-gray-600 max-w-[120px] truncate">${r.School || '-'}</td>
+      <td class="text-gray-600 font-mono text-xs">${r.Phone || '-'}</td>
+      <td class="${scoreColor}">${r.TotalScore}/27</td>
+      <td class="text-gray-600 text-xs max-w-[120px] truncate">${r.Interpretation || '-'}</td>
+      <td>${alertBadge}</td>
+      <td>${statusBadge}</td>
+      <td><button class="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl text-xs font-semibold transition" onclick="event.stopPropagation();openModal('${r.RecordID}')">แก้ไข</button></td>
+    </tr>`;
+  }).join('');
+
+  footer.textContent = 'แสดง ' + rows.length + ' รายการ';
+}
+
+function alertLevelBadge(level) {
+  const map = {
+    'Critical': '<span class="badge-critical text-xs font-bold px-2 py-1 rounded-full inline-block">🚨 Critical</span>',
+    'High':     '<span class="badge-high text-xs font-bold px-2 py-1 rounded-full inline-block">⚠️ High</span>',
+    'Moderate': '<span class="badge-moderate text-xs font-semibold px-2 py-1 rounded-full inline-block">Moderate</span>',
+  };
+  return map[level] || '<span class="badge-normal text-xs px-2 py-1 rounded-full inline-block">ปกติ</span>';
+}
+
+function statusBadgeHtml(status) {
+  const map = {
+    'รอติดต่อ':   'status-pending',
+    'ติดต่อแล้ว': 'status-contacted',
+    'ดูแลแล้ว':   'status-done',
+    'ส่งต่อ':     'status-referred',
+    'ปกติ':       'status-normal',
+  };
+  const cls = map[status] || 'status-normal';
+  return `<span class="${cls} text-xs font-semibold px-2 py-1 rounded-full inline-block">${status || '-'}</span>`;
+}
+
+// ============================================================
+// Filters
+// ============================================================
+function applyFilters() {
+  const search = (document.getElementById('search-input').value || '').toLowerCase().trim();
+  const level  = document.getElementById('filter-level').value;
+  const status = document.getElementById('filter-status').value;
+
+  let filtered = allData;
+
+  if (level !== 'all') {
+    filtered = filtered.filter(function(r) { return (r.AlertLevel || '') === level; });
+  }
+  if (status !== 'all') {
+    filtered = filtered.filter(function(r) { return r.Status === status; });
+  }
+  if (search) {
+    filtered = filtered.filter(function(r) {
+      return (r.FullName   || '').toLowerCase().includes(search) ||
+             (r.School     || '').toLowerCase().includes(search) ||
+             (r.Phone      || '').includes(search)               ||
+             (r.RecordID   || '').toLowerCase().includes(search);
+    });
+  }
+
+  renderTable(filtered);
+
+  const summary = document.getElementById('filter-summary');
+  const parts = [];
+  if (level !== 'all') parts.push('ระดับ: ' + level);
+  if (status !== 'all') parts.push('สถานะ: ' + status);
+  if (search) parts.push('ค้นหา: "' + search + '"');
+  summary.textContent = parts.length ? 'กรองตาม: ' + parts.join(' | ') + ' — พบ ' + filtered.length + ' รายการ' : '';
+}
+
+function filterByLevel(level) {
+  document.getElementById('filter-status').value = 'all';
+  document.getElementById('search-input').value  = '';
+  if (level === 'all' || level === 'normal' || level === 'mild') {
+    document.getElementById('filter-level').value = level === 'all' ? 'all' : '';
+  } else {
+    document.getElementById('filter-level').value = level;
+  }
+  applyFilters();
+}
+
+function filterByStatus(status) {
+  document.getElementById('filter-level').value  = 'all';
+  document.getElementById('search-input').value  = '';
+  document.getElementById('filter-status').value = status;
+  applyFilters();
+}
+
+// ============================================================
+// Modal: Open / Close
+// ============================================================
+function openModal(recordId) {
+  const record = allData.find(function(r) { return r.RecordID === recordId; });
+  if (!record) return;
+  currentRecord = record;
+
+  // Fill modal data
+  document.getElementById('modal-title').textContent     = record.FullName;
+  document.getElementById('modal-record-id').textContent = record.RecordID;
+
+  // Alert banner
+  const banner = document.getElementById('modal-alert-banner');
+  const alertText = document.getElementById('modal-alert-text');
+  if (record.AlertLevel) {
+    banner.classList.remove('hidden');
+    const bannerMap = {
+      Critical: { bg:'bg-red-100 border border-red-300',   text:'🚨 ระดับวิกฤต (Critical) — ต้องดำเนินการทันที',  color:'text-red-800' },
+      High:     { bg:'bg-orange-100 border border-orange-300', text:'⚠️ ระดับสูง (High) — ควรติดต่อโดยเร็ว', color:'text-orange-800' },
+      Moderate: { bg:'bg-amber-100 border border-amber-300',   text:'ระดับปานกลาง (Moderate)', color:'text-amber-800' },
+    };
+    const style = bannerMap[record.AlertLevel] || {};
+    banner.className = 'rounded-2xl p-3 text-center ' + (style.bg || '');
+    alertText.className = 'font-bold text-sm ' + (style.color || '');
+    alertText.textContent = style.text || record.AlertLevel;
+  } else {
+    banner.classList.add('hidden');
+  }
+
+  // ข้อมูลพื้นฐาน
+  document.getElementById('m-name').textContent      = record.FullName      || '-';
+  document.getElementById('m-age').textContent       = (record.Age || '-') + ' ปี';
+  document.getElementById('m-gender').textContent    = record.Gender        || '-';
+  document.getElementById('m-timestamp').textContent = record.Timestamp     || '-';
+  document.getElementById('m-school').textContent    = record.School        || '-';
+  document.getElementById('m-phone').textContent     = record.Phone         || '-';
+
+  // คะแนน
+  const score   = record.TotalScore;
+  const interp  = record.Interpretation || '-';
+  document.getElementById('m-score').textContent = score + '/27';
+
+  const interpEl = document.getElementById('m-interp');
+  const interpColor = score >= 20 ? 'bg-red-50 text-red-700' :
+                      score >= 15 ? 'bg-rose-50 text-rose-700' :
+                      score >= 10 ? 'bg-orange-50 text-orange-700' :
+                      score >=  5 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700';
+  interpEl.className = 'text-center py-2 rounded-xl text-sm font-semibold ' + interpColor;
+  interpEl.textContent = interp;
+
+  // Q1-Q9
+  [1,2,3,4,5,6,7,8,9].forEach(function(i) {
+    const el = document.getElementById('m-q' + i);
+    if (!el) return;
+    const val = record['Q' + i];
+    const numEl = el.querySelector('div:last-child');
+    if (numEl) {
+      numEl.textContent = val !== undefined && val !== '' ? val : '-';
+      numEl.className = 'font-bold text-sm ' + (val >= 2 ? 'text-red-600' : val >= 1 ? 'text-amber-600' : 'text-gray-700');
+    }
+  });
+
+  // คำถามเสี่ยง
+  const q10El = document.getElementById('m-q10');
+  const q11El = document.getElementById('m-q11');
+  q10El.textContent = record.SuicideThoughtLastMonth || '-';
+  q10El.className   = 'font-semibold ' + (record.SuicideThoughtLastMonth === 'ใช่' ? 'text-red-600' : 'text-emerald-600');
+  q11El.textContent = record.SuicideAttemptLifetime  || '-';
+  q11El.className   = 'font-semibold ' + (record.SuicideAttemptLifetime  === 'ใช่' ? 'text-red-600' : 'text-emerald-600');
+
+  // LINE Alert
+  const alertSentEl    = document.getElementById('m-alert-sent');
+  const alertBadgeEl   = document.getElementById('m-alert-badge');
+  if (record.AlertSent === 'ใช่') {
+    alertSentEl.textContent  = 'ส่งแล้ว เมื่อ: ' + (record.AlertSentAt || '-');
+    alertBadgeEl.textContent = 'ส่งแล้ว';
+    alertBadgeEl.className   = 'text-xs font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700';
+  } else if (record.NeedAlert === 'ใช่') {
+    alertSentEl.textContent  = 'ยังไม่ได้ส่ง (ต้องตรวจสอบ LINE Token)';
+    alertBadgeEl.textContent = 'ยังไม่ส่ง';
+    alertBadgeEl.className   = 'text-xs font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700';
+  } else {
+    alertSentEl.textContent  = 'ไม่จำเป็น (คะแนนต่ำกว่าเกณฑ์)';
+    alertBadgeEl.textContent = 'ไม่ต้องแจ้ง';
+    alertBadgeEl.className   = 'text-xs font-bold px-2 py-1 rounded-full bg-gray-100 text-gray-500';
+  }
+
+  // Status dropdown
+  const statusEl = document.getElementById('modal-status');
+  statusEl.value = record.Status || 'รอติดต่อ';
+  document.getElementById('modal-note').value = record.StaffNote || '';
+
+  // Show modal
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(event) {
+  if (event && event.target !== document.getElementById('modal-overlay')) return;
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  currentRecord = null;
+}
+
+// ============================================================
+// Save Case Status
+// ============================================================
+async function saveCase() {
+  if (!currentRecord) return;
+  const status    = document.getElementById('modal-status').value;
+  const staffNote = document.getElementById('modal-note').value.trim();
+  const btn = document.getElementById('modal-save-btn');
+
+  btn.disabled   = true;
+  btn.textContent = '⏳ กำลังบันทึก...';
+
+  try {
+    const data = await rpc('updateStatus', [currentRecord.RecordID, status, staffNote]);
+    if (data.ok) {
+      // Update local data
+      const idx = allData.findIndex(function(r) { return r.RecordID === currentRecord.RecordID; });
+      if (idx !== -1) {
+        allData[idx].Status    = status;
+        allData[idx].StaffNote = staffNote;
+      }
+
+      document.getElementById('modal-overlay').classList.remove('open');
+      document.body.style.overflow = '';
+      currentRecord = null;
+
+      applyFilters();
+      loadAll(); // refresh stats
+
+      Swal.fire({ icon:'success', title:'บันทึกสำเร็จ', text:'อัปเดตสถานะเรียบร้อย',
+        confirmButtonColor:'#10B981', timer:2000, showConfirmButton:false });
+    } else if (data.message && data.message.includes('Session')) {
+      handleSessionExpired();
+    } else {
+      throw new Error(data.message || 'เกิดข้อผิดพลาด');
+    }
+  } catch (err) {
+    Swal.fire({ icon:'error', title:'บันทึกไม่สำเร็จ', text:err.message, confirmButtonColor:'#1D4ED8' });
+  } finally {
+    btn.disabled   = false;
+    btn.textContent = 'บันทึกสถานะ';
+  }
+}
+
+// ============================================================
+// Init: Auto-login ถ้ามี token อยู่แล้ว
+// ============================================================
+(function init() {
+  if (sessionToken && sessionName) {
+    showDashboard();
+  }
+})();
+</script>
+
+</body>
+</html>

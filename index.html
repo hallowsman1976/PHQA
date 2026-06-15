@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="theme-color" content="#1D4ED8" />
+  <title>แบบประเมินภาวะซึมเศร้า PHQ-A</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- TailwindCSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- SweetAlert2 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { thai: ['"Noto Sans Thai"', 'sans-serif'] },
+          colors: {
+            primary:  { DEFAULT: '#1D4ED8', light: '#3B82F6', dark: '#1E3A8A' },
+            cream:    { DEFAULT: '#FFFBEB', dark: '#FEF3C7' },
+            success:  '#10B981',
+            warning:  '#F59E0B',
+            danger:   '#EF4444',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    * { font-family: 'Noto Sans Thai', sans-serif; }
+
+    body {
+      background: linear-gradient(135deg, #EFF6FF 0%, #ECFDF5 50%, #FFFBEB 100%);
+      min-height: 100vh;
+    }
+
+    /* Glassmorphism card */
+    .glass {
+      background: rgba(255, 255, 255, 0.80);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      box-shadow: 0 8px 32px rgba(29, 78, 216, 0.10);
+    }
+
+    .glass-dark {
+      background: rgba(29, 78, 216, 0.90);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    /* Scale choices */
+    .scale-btn {
+      cursor: pointer;
+      transition: all 0.18s ease;
+      border: 2px solid transparent;
+    }
+    .scale-btn:hover   { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+    .scale-btn.active  { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(29,78,216,0.30); }
+    .scale-btn.active-0  { background: #F0FDF4; border-color: #10B981; color: #065F46; }
+    .scale-btn.active-1  { background: #FFFBEB; border-color: #F59E0B; color: #92400E; }
+    .scale-btn.active-2  { background: #FFF7ED; border-color: #F97316; color: #9A3412; }
+    .scale-btn.active-3  { background: #FEF2F2; border-color: #EF4444; color: #991B1B; }
+
+    /* Risk yes/no */
+    .risk-btn {
+      cursor: pointer;
+      transition: all 0.18s ease;
+      border: 2px solid transparent;
+    }
+    .risk-btn:hover          { transform: translateY(-2px); }
+    .risk-btn.active-yes     { background: #FEF2F2; border-color: #EF4444; color: #991B1B; }
+    .risk-btn.active-no      { background: #F0FDF4; border-color: #10B981; color: #065F46; }
+
+    /* Score badge animation */
+    .score-pulse { animation: pulse-ring 2s infinite; }
+    @keyframes pulse-ring {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(29,78,216,0.3); }
+      50%       { box-shadow: 0 0 0 8px rgba(29,78,216,0); }
+    }
+
+    /* Progress bar */
+    .progress-bar { transition: width 0.4s cubic-bezier(0.4,0,0.2,1); }
+
+    /* Step section */
+    .step-section { display: none; }
+    .step-section.active { display: block; animation: fadeSlide 0.3s ease; }
+    @keyframes fadeSlide {
+      from { opacity:0; transform: translateX(20px); }
+      to   { opacity:1; transform: translateX(0); }
+    }
+
+    /* Input focus */
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #93C5FD; border-radius: 99px; }
+
+    .required-star { color: #EF4444; }
+  </style>
+</head>
+
+<body class="pb-32">
+
+<!-- ===== HEADER ===== -->
+<header class="glass-dark sticky top-0 z-40 px-4 py-3">
+  <div class="max-w-2xl mx-auto flex items-center gap-3">
+    <div class="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center text-xl">🧠</div>
+    <div class="flex-1 min-w-0">
+      <p class="text-white/80 text-xs leading-none">แบบประเมิน</p>
+      <h1 class="text-white font-semibold text-sm leading-tight truncate">ภาวะซึมเศร้าในวัยรุ่น (PHQ-A)</h1>
+    </div>
+    <!-- Real-time Score Badge (compact) -->
+    <div id="score-badge-header" class="hidden glass rounded-xl px-3 py-1.5 text-center min-w-[4rem]">
+      <div id="score-num-header" class="text-lg font-bold text-primary leading-none">0</div>
+      <div class="text-[10px] text-gray-500 leading-none">คะแนน</div>
+    </div>
+  </div>
+</header>
+
+<!-- ===== PROGRESS BAR ===== -->
+<div class="sticky top-[56px] z-30 bg-white/60 backdrop-blur-sm border-b border-blue-100">
+  <div class="max-w-2xl mx-auto px-4 py-2">
+    <!-- Steps indicator -->
+    <div class="flex items-center justify-between mb-2">
+      <div id="step-indicator" class="text-xs text-gray-500 font-medium">ขั้นตอนที่ 1 จาก 3</div>
+      <div id="step-label" class="text-xs text-primary-light font-semibold">ข้อมูลพื้นฐาน</div>
+    </div>
+    <div class="w-full bg-blue-100 rounded-full h-2">
+      <div id="progress-fill" class="progress-bar h-2 bg-gradient-to-r from-primary to-primary-light rounded-full" style="width: 33.3%"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MAIN CONTENT ===== -->
+<main class="max-w-2xl mx-auto px-4 pt-4">
+
+  <!-- ========================================
+       STEP 1: ข้อมูลพื้นฐาน
+  ======================================== -->
+  <section id="step-1" class="step-section active">
+
+    <div class="glass rounded-3xl p-5 mb-4">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 bg-blue-100 rounded-2xl flex items-center justify-center text-xl">📋</div>
+        <div>
+          <h2 class="font-bold text-gray-800 text-base leading-tight">ข้อมูลพื้นฐาน</h2>
+          <p class="text-gray-500 text-xs">กรุณากรอกข้อมูลให้ครบถ้วน</p>
+        </div>
+      </div>
+
+      <div class="space-y-4">
+        <!-- ชื่อ-สกุล -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+            ชื่อ-สกุล <span class="required-star">*</span>
+          </label>
+          <input id="FullName" type="text" inputmode="text" autocomplete="name"
+            placeholder="ชื่อ นามสกุล"
+            class="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm text-gray-800 placeholder-gray-400 transition focus:border-primary-light" />
+          <p id="err-FullName" class="mt-1 text-xs text-danger hidden"></p>
+        </div>
+
+        <!-- อายุ + เพศ -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+              อายุ (ปี) <span class="required-star">*</span>
+            </label>
+            <input id="Age" type="number" inputmode="numeric" min="10" max="25"
+              placeholder="เช่น 15"
+              class="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm text-gray-800 placeholder-gray-400 transition focus:border-primary-light" />
+            <p id="err-Age" class="mt-1 text-xs text-danger hidden"></p>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">เพศ</label>
+            <select id="Gender"
+              class="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm text-gray-800 transition focus:border-primary-light appearance-none">
+              <option value="">ไม่ระบุ</option>
+              <option value="ชาย">ชาย</option>
+              <option value="หญิง">หญิง</option>
+              <option value="LGBTQ+">LGBTQ+</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- โรงเรียน -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">โรงเรียน / สถานศึกษา</label>
+          <input id="School" type="text"
+            placeholder="ชื่อโรงเรียน"
+            class="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm text-gray-800 placeholder-gray-400 transition focus:border-primary-light" />
+        </div>
+
+        <!-- เบอร์โทร -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+            เบอร์โทรที่ติดต่อได้ <span class="required-star">*</span>
+          </label>
+          <input id="Phone" type="tel" inputmode="tel" autocomplete="tel"
+            placeholder="0812345678"
+            maxlength="10"
+            class="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm text-gray-800 placeholder-gray-400 transition focus:border-primary-light" />
+          <p id="err-Phone" class="mt-1 text-xs text-danger hidden"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- คำชี้แจง PHQ-A -->
+    <div class="glass rounded-3xl p-5 mb-4 border border-blue-100">
+      <div class="flex gap-3">
+        <div class="text-2xl">💬</div>
+        <div>
+          <h3 class="font-bold text-gray-800 text-sm mb-1">คำชี้แจง</h3>
+          <p class="text-gray-600 text-sm leading-relaxed">
+            ในช่วง <strong class="text-primary">2 สัปดาห์ที่ผ่านมา</strong> คุณมีอาการต่อไปนี้บ่อยแค่ไหน?
+            โปรดตอบทุกข้อตามความเป็นจริงของคุณ
+          </p>
+          <div class="mt-3 grid grid-cols-2 gap-1.5 text-xs">
+            <div class="flex items-center gap-1.5"><span class="w-5 h-5 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold text-[10px]">0</span><span class="text-gray-600">ไม่มีเลย</span></div>
+            <div class="flex items-center gap-1.5"><span class="w-5 h-5 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center font-bold text-[10px]">1</span><span class="text-gray-600">มีบางวัน</span></div>
+            <div class="flex items-center gap-1.5"><span class="w-5 h-5 bg-orange-100 text-orange-700 rounded-full flex items-center justify-center font-bold text-[10px]">2</span><span class="text-gray-600">มีมากกว่า 7 วัน</span></div>
+            <div class="flex items-center gap-1.5"><span class="w-5 h-5 bg-red-100 text-red-700 rounded-full flex items-center justify-center font-bold text-[10px]">3</span><span class="text-gray-600">มีแทบทุกวัน</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button onclick="goToStep(2)"
+      class="w-full py-4 bg-gradient-to-r from-primary to-primary-light text-white font-semibold rounded-2xl shadow-lg shadow-blue-200 active:scale-95 transition text-sm">
+      ถัดไป → เริ่มทำแบบประเมิน
+    </button>
+  </section>
+
+  <!-- ========================================
+       STEP 2: แบบประเมิน PHQ-A (Q1-Q9)
+  ======================================== -->
+  <section id="step-2" class="step-section">
+
+    <!-- Floating score card -->
+    <div id="score-card" class="glass rounded-3xl p-4 mb-4 border border-blue-100">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs text-gray-500 font-medium">คะแนนรวมปัจจุบัน</p>
+          <div class="flex items-baseline gap-2 mt-0.5">
+            <span id="score-display" class="text-3xl font-bold text-primary score-pulse">0</span>
+            <span class="text-gray-400 text-sm">/ 27</span>
+          </div>
+          <p id="interp-display" class="text-xs text-gray-500 mt-0.5">ตอบทุกข้อเพื่อดูผล</p>
+        </div>
+        <div id="score-level-icon" class="text-4xl">🌤️</div>
+      </div>
+      <!-- Score bar -->
+      <div class="mt-3 w-full bg-gray-100 rounded-full h-2">
+        <div id="score-bar" class="h-2 rounded-full transition-all duration-500 bg-emerald-400" style="width:0%"></div>
+      </div>
+      <div class="flex justify-between text-[10px] text-gray-400 mt-0.5">
+        <span>0</span><span>4</span><span>9</span><span>14</span><span>19</span><span>27</span>
+      </div>
+    </div>
+
+    <!-- คำถาม Q1-Q9 -->
+    <div id="questions-container" class="space-y-4"></div>
+
+    <div class="flex gap-3 mt-5">
+      <button onclick="goToStep(1)"
+        class="flex-1 py-4 border-2 border-blue-200 text-primary font-semibold rounded-2xl active:scale-95 transition text-sm bg-white">
+        ← ย้อนกลับ
+      </button>
+      <button onclick="goToStep(3)"
+        class="flex-[2] py-4 bg-gradient-to-r from-primary to-primary-light text-white font-semibold rounded-2xl shadow-lg shadow-blue-200 active:scale-95 transition text-sm">
+        ถัดไป → คำถามเสี่ยง
+      </button>
+    </div>
+  </section>
+
+  <!-- ========================================
+       STEP 3: คำถามเสี่ยง + ยืนยัน + ส่ง
+  ======================================== -->
+  <section id="step-3" class="step-section">
+
+    <!-- คำเตือน -->
+    <div class="bg-amber-50 border border-amber-200 rounded-3xl p-4 mb-4">
+      <div class="flex gap-3 items-start">
+        <span class="text-2xl">⚠️</span>
+        <div>
+          <p class="font-semibold text-amber-800 text-sm">คำถามสำคัญ</p>
+          <p class="text-amber-700 text-xs mt-0.5 leading-relaxed">
+            คำถามต่อไปนี้เป็นเรื่องละเอียดอ่อน กรุณาตอบตามความเป็นจริงเพื่อประโยชน์ในการดูแลสุขภาพของคุณ
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q10 -->
+    <div class="glass rounded-3xl p-5 mb-4">
+      <div class="flex gap-3 mb-4">
+        <div class="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center text-sm font-bold text-amber-700 flex-shrink-0">10</div>
+        <p class="text-gray-800 text-sm font-medium leading-relaxed">
+          ใน 1 เดือนที่ผ่านมา มีช่วงไหนที่คุณมีความคิด<strong>อยากตาย</strong> หรือ<strong>ไม่อยากมีชีวิตอยู่</strong>อย่างจริงจังหรือไม่?
+        </p>
+      </div>
+      <div class="flex gap-3">
+        <button id="q10-yes" onclick="setRisk('q10', true)" class="risk-btn flex-1 py-3 bg-white border-2 border-gray-200 rounded-2xl text-sm font-semibold text-gray-700 transition">
+          ✅ ใช่
+        </button>
+        <button id="q10-no" onclick="setRisk('q10', false)" class="risk-btn flex-1 py-3 bg-white border-2 border-gray-200 rounded-2xl text-sm font-semibold text-gray-700 transition">
+          ❌ ไม่ใช่
+        </button>
+      </div>
+      <p id="err-q10" class="mt-2 text-xs text-danger hidden">กรุณาเลือกคำตอบ</p>
+    </div>
+
+    <!-- Q11 -->
+    <div class="glass rounded-3xl p-5 mb-4">
+      <div class="flex gap-3 mb-4">
+        <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center text-sm font-bold text-red-700 flex-shrink-0">11</div>
+        <p class="text-gray-800 text-sm font-medium leading-relaxed">
+          ตลอดชีวิตที่ผ่านมา คุณเคย<strong>พยายามที่จะทำให้ตัวเองตาย</strong> หรือ<strong>ลงมือฆ่าตัวตาย</strong>หรือไม่?
+        </p>
+      </div>
+      <div class="flex gap-3">
+        <button id="q11-yes" onclick="setRisk('q11', true)" class="risk-btn flex-1 py-3 bg-white border-2 border-gray-200 rounded-2xl text-sm font-semibold text-gray-700 transition">
+          ✅ ใช่
+        </button>
+        <button id="q11-no" onclick="setRisk('q11', false)" class="risk-btn flex-1 py-3 bg-white border-2 border-gray-200 rounded-2xl text-sm font-semibold text-gray-700 transition">
+          ❌ ไม่ใช่
+        </button>
+      </div>
+      <p id="err-q11" class="mt-2 text-xs text-danger hidden">กรุณาเลือกคำตอบ</p>
+    </div>
+
+    <!-- สรุปคะแนน -->
+    <div id="summary-card" class="glass rounded-3xl p-5 mb-4 border border-blue-100">
+      <h3 class="font-bold text-gray-800 text-sm mb-3">📊 สรุปผลการประเมิน</h3>
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-gray-600 text-sm">คะแนนรวม PHQ-A</span>
+        <span class="text-2xl font-bold text-primary"><span id="summary-score">0</span>/27</span>
+      </div>
+      <div id="summary-interp" class="text-sm font-semibold text-center py-2 rounded-xl bg-emerald-50 text-emerald-700">
+        ไม่มีภาวะซึมเศร้า
+      </div>
+    </div>
+
+    <!-- Consent -->
+    <div class="glass rounded-3xl p-5 mb-4">
+      <label class="flex items-start gap-3 cursor-pointer">
+        <div class="relative mt-0.5">
+          <input type="checkbox" id="consent" class="sr-only peer" />
+          <div class="w-5 h-5 border-2 border-gray-300 rounded-md bg-white peer-checked:bg-primary peer-checked:border-primary transition flex items-center justify-center">
+            <svg id="consent-check" class="w-3 h-3 text-white hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+        </div>
+        <span class="text-sm text-gray-600 leading-relaxed">
+          ฉันยินยอมให้จัดเก็บข้อมูลนี้เพื่อ<strong class="text-gray-800">ประโยชน์ในการดูแลสุขภาพ</strong>
+          และเข้าใจว่าข้อมูลจะถูกเก็บเป็นความลับ เข้าถึงได้เฉพาะผู้ที่เกี่ยวข้องเท่านั้น
+        </span>
+      </label>
+      <p id="err-consent" class="mt-2 text-xs text-danger hidden">กรุณายอมรับข้อตกลงก่อนส่งข้อมูล</p>
+    </div>
+
+    <div class="flex gap-3">
+      <button onclick="goToStep(2)"
+        class="flex-1 py-4 border-2 border-blue-200 text-primary font-semibold rounded-2xl active:scale-95 transition text-sm bg-white">
+        ← ย้อนกลับ
+      </button>
+      <button id="submit-btn" onclick="submitForm()"
+        class="flex-[2] py-4 bg-gradient-to-r from-emerald-500 to-emerald-400 text-white font-semibold rounded-2xl shadow-lg shadow-emerald-200 active:scale-95 transition text-sm">
+        ส่งข้อมูล ✓
+      </button>
+    </div>
+
+    <!-- ข้อความปลอบประโลม -->
+    <p class="text-center text-xs text-gray-400 mt-4 px-4 leading-relaxed">
+      หากคุณรู้สึกไม่ดีในขณะนี้ โปรดติดต่อสายด่วนสุขภาพจิต
+      <strong class="text-primary">1323</strong> ตลอด 24 ชั่วโมง
+    </p>
+  </section>
+
+</main>
+
+<!-- ===== SCRIPTS ===== -->
+<script>
+// ============================================================
+// ⚙️ ตั้งค่า: ใส่ URL Web App ของคุณที่นี่
+// (ได้จาก Google Apps Script → Deploy → Web App URL)
+// ============================================================
+const GAS_URL = 'YOUR_WEBAPP_URL_HERE';
+
+// ============================================================
+// State
+// ============================================================
+let currentStep = 1;
+const scores    = { Q1:null, Q2:null, Q3:null, Q4:null, Q5:null, Q6:null, Q7:null, Q8:null, Q9:null };
+const risks     = { q10: null, q11: null };
+
+// คำถาม PHQ-A
+const QUESTIONS = [
+  { id: 'Q1', text: 'รู้สึกซึม เศร้า หงุดหงิด หรือสิ้นหวัง', icon: '😔' },
+  { id: 'Q2', text: 'เบื่อ ไม่ค่อยสนใจหรือไม่เพลิดเพลิน เวลาทำสิ่งต่าง ๆ', icon: '😶' },
+  { id: 'Q3', text: 'นอนหลับยาก รู้สึกง่วงทั้งวัน หรือนอนมากเกินไป', icon: '😴' },
+  { id: 'Q4', text: 'ไม่อยากอาหาร น้ำหนักลด หรือกินมากกว่าปกติ', icon: '🍽️' },
+  { id: 'Q5', text: 'รู้สึกเหนื่อยล้า หรือไม่ค่อยมีพลัง', icon: '🪫' },
+  { id: 'Q6', text: 'รู้สึกแย่กับตัวเอง หรือรู้สึกว่าตัวเองล้มเหลว หรือทำให้ตัวเองหรือครอบครัวผิดหวัง', icon: '💔' },
+  { id: 'Q7', text: 'จดจ่อกับสิ่งต่าง ๆ ได้ยาก เช่น ทำการบ้าน อ่านหนังสือ หรือดูโทรทัศน์', icon: '🧠' },
+  { id: 'Q8', text: 'พูดหรือทำอะไรช้าลงมากจนคนอื่นสังเกตเห็นได้ หรือกระสับกระส่ายมากกว่าปกติ', icon: '⚡' },
+  { id: 'Q9', text: 'คิดว่าถ้าตายไปเสียจะดีกว่า หรือคิดจะทำร้ายตัวเองด้วยวิธีใดวิธีหนึ่ง', icon: '⚠️' },
+];
+
+const SCALE_LABELS  = ['ไม่มีเลย', 'มีบางวัน', 'มากกว่า 7 วัน', 'แทบทุกวัน'];
+const SCALE_COLORS  = ['0', '1', '2', '3'];
+
+// ============================================================
+// สร้าง UI คำถาม
+// ============================================================
+function renderQuestions() {
+  const container = document.getElementById('questions-container');
+  container.innerHTML = '';
+
+  QUESTIONS.forEach(function(q, idx) {
+    const card = document.createElement('div');
+    card.className = 'glass rounded-3xl p-5';
+    card.id = 'card-' + q.id;
+
+    const isRisk = q.id === 'Q9';
+    const headerBg = isRisk ? 'bg-red-100' : 'bg-blue-100';
+    const headerNum = isRisk ? 'text-red-700' : 'text-primary';
+
+    card.innerHTML = `
+      <div class="flex gap-3 mb-4">
+        <div class="w-8 h-8 ${headerBg} rounded-full flex items-center justify-center text-sm font-bold ${headerNum} flex-shrink-0">${idx + 1}</div>
+        <div class="flex-1">
+          <p class="text-gray-800 text-sm font-medium leading-relaxed">${q.text}</p>
+          ${isRisk ? '<p class="text-red-500 text-xs mt-1 font-medium">⚠️ ข้อนี้มีความสำคัญมาก กรุณาตอบตามความเป็นจริง</p>' : ''}
+        </div>
+      </div>
+      <div class="grid grid-cols-4 gap-2" id="options-${q.id}">
+        ${SCALE_LABELS.map(function(label, val) {
+          return `<button
+            onclick="setScore('${q.id}', ${val})"
+            id="${q.id}-${val}"
+            class="scale-btn bg-white border-2 border-gray-100 rounded-2xl py-3 px-1 text-center transition"
+          >
+            <div class="text-lg font-bold text-gray-700">${val}</div>
+            <div class="text-[10px] text-gray-500 mt-0.5 leading-tight">${label}</div>
+          </button>`;
+        }).join('')}
+      </div>
+      <p id="err-${q.id}" class="mt-2 text-xs text-danger hidden">กรุณาเลือกคำตอบ</p>
+    `;
+    container.appendChild(card);
+  });
+}
+
+// ============================================================
+// เลือกคะแนน
+// ============================================================
+function setScore(qId, value) {
+  scores[qId] = value;
+
+  // อัปเดต UI ปุ่ม
+  for (let v = 0; v <= 3; v++) {
+    const btn = document.getElementById(qId + '-' + v);
+    if (!btn) continue;
+    btn.className = 'scale-btn border-2 rounded-2xl py-3 px-1 text-center transition';
+    if (v === value) {
+      btn.className += ' active active-' + v;
+    } else {
+      btn.className += ' bg-white border-gray-100';
+    }
+  }
+
+  // ซ่อน error
+  const errEl = document.getElementById('err-' + qId);
+  if (errEl) errEl.classList.add('hidden');
+
+  updateScore();
+
+  // เลื่อน scroll ไปข้อถัดไปอัตโนมัติ (เฉพาะมือถือ)
+  if (qId !== 'Q9') {
+    const nextIdx = QUESTIONS.findIndex(function(q) { return q.id === qId; }) + 1;
+    if (nextIdx < QUESTIONS.length) {
+      const nextCard = document.getElementById('card-' + QUESTIONS[nextIdx].id);
+      if (nextCard) {
+        setTimeout(function() {
+          nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 200);
+      }
+    }
+  }
+}
+
+// ============================================================
+// เลือกคำถามเสี่ยง
+// ============================================================
+function setRisk(key, value) {
+  risks[key] = value;
+  const yesBtn = document.getElementById(key + '-yes');
+  const noBtn  = document.getElementById(key + '-no');
+
+  if (yesBtn) {
+    yesBtn.className = 'risk-btn flex-1 py-3 bg-white border-2 border-gray-200 rounded-2xl text-sm font-semibold text-gray-700 transition';
+    if (value === true) yesBtn.classList.add('active-yes');
+  }
+  if (noBtn) {
+    noBtn.className = 'risk-btn flex-1 py-3 bg-white border-2 border-gray-200 rounded-2xl text-sm font-semibold text-gray-700 transition';
+    if (value === false) noBtn.classList.add('active-no');
+  }
+
+  const errEl = document.getElementById('err-' + key);
+  if (errEl) errEl.classList.add('hidden');
+
+  updateSummary();
+}
+
+// ============================================================
+// คำนวณคะแนนแบบ real-time
+// ============================================================
+function calcTotalScore() {
+  return Object.values(scores).reduce(function(sum, v) {
+    return sum + (v !== null ? v : 0);
+  }, 0);
+}
+
+function getInterpretation(score) {
+  if (score <=  4) return { text: 'ไม่มีภาวะซึมเศร้า',        color: 'text-emerald-600', bg: 'bg-emerald-50', barColor: 'bg-emerald-400', icon: '🌤️' };
+  if (score <=  9) return { text: 'ซึมเศร้าเล็กน้อย',          color: 'text-amber-600',   bg: 'bg-amber-50',   barColor: 'bg-amber-400',   icon: '⛅' };
+  if (score <= 14) return { text: 'ซึมเศร้าปานกลาง',           color: 'text-orange-600',  bg: 'bg-orange-50',  barColor: 'bg-orange-400',  icon: '🌥️' };
+  if (score <= 19) return { text: 'ซึมเศร้ามาก',               color: 'text-rose-600',    bg: 'bg-rose-50',    barColor: 'bg-rose-400',    icon: '🌧️' };
+  return               { text: 'ซึมเศร้ารุนแรง',              color: 'text-red-700',     bg: 'bg-red-50',     barColor: 'bg-red-500',     icon: '⛈️' };
+}
+
+function updateScore() {
+  const total  = calcTotalScore();
+  const interp = getInterpretation(total);
+  const pct    = (total / 27) * 100;
+
+  // Header badge
+  document.getElementById('score-num-header').textContent = total;
+  document.getElementById('score-num-header').className   = 'text-lg font-bold leading-none ' + interp.color;
+  document.getElementById('score-badge-header').classList.remove('hidden');
+
+  // Score card
+  document.getElementById('score-display').textContent = total;
+  document.getElementById('score-display').className   = 'text-3xl font-bold score-pulse ' + interp.color;
+  document.getElementById('interp-display').textContent = interp.text;
+  document.getElementById('interp-display').className   = 'text-xs mt-0.5 font-medium ' + interp.color;
+  document.getElementById('score-level-icon').textContent = interp.icon;
+
+  const bar = document.getElementById('score-bar');
+  bar.style.width    = Math.min(pct, 100) + '%';
+  bar.className      = 'h-2 rounded-full transition-all duration-500 ' + interp.barColor;
+
+  updateSummary();
+}
+
+function updateSummary() {
+  const total  = calcTotalScore();
+  const interp = getInterpretation(total);
+
+  document.getElementById('summary-score').textContent = total;
+  const interpEl = document.getElementById('summary-interp');
+  interpEl.textContent = interp.text;
+  interpEl.className   = 'text-sm font-semibold text-center py-2 rounded-xl ' + interp.bg + ' ' + interp.color;
+}
+
+// ============================================================
+// Navigation
+// ============================================================
+function goToStep(step) {
+  if (!validateStep(currentStep, step)) return;
+
+  document.querySelectorAll('.step-section').forEach(function(el) { el.classList.remove('active'); });
+  document.getElementById('step-' + step).classList.add('active');
+
+  const labels = ['', 'ข้อมูลพื้นฐาน', 'แบบประเมิน PHQ-A', 'คำถามเสี่ยงและยืนยัน'];
+  document.getElementById('step-indicator').textContent = 'ขั้นตอนที่ ' + step + ' จาก 3';
+  document.getElementById('step-label').textContent     = labels[step];
+  document.getElementById('progress-fill').style.width  = (step / 3 * 100) + '%';
+
+  currentStep = step;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ============================================================
+// Validation
+// ============================================================
+function validateStep(step, targetStep) {
+  if (targetStep <= step) return true; // ย้อนกลับได้เสมอ
+
+  if (step === 1) {
+    let valid = true;
+    const name  = document.getElementById('FullName').value.trim();
+    const age   = parseInt(document.getElementById('Age').value);
+    const phone = document.getElementById('Phone').value.trim();
+
+    showErr('FullName', !name ? 'กรุณากรอกชื่อ-สกุล' : '');
+    showErr('Age', (isNaN(age) || age < 10 || age > 25) ? 'กรุณากรอกอายุที่ถูกต้อง (10-25 ปี)' : '');
+    showErr('Phone', (!phone || !/^0\d{8,9}$/.test(phone)) ? 'กรุณากรอกเบอร์โทร 10 หลัก ขึ้นต้นด้วย 0' : '');
+
+    if (!name || isNaN(age) || age < 10 || age > 25 || !phone || !/^0\d{8,9}$/.test(phone)) valid = false;
+    return valid;
+  }
+
+  if (step === 2) {
+    let valid = true;
+    QUESTIONS.forEach(function(q) {
+      if (scores[q.id] === null) {
+        showErr(q.id, 'กรุณาเลือกคำตอบ');
+        // เลื่อนไปที่ข้อแรกที่ยังไม่ตอบ
+        if (valid) {
+          const card = document.getElementById('card-' + q.id);
+          if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        valid = false;
+      } else {
+        showErr(q.id, '');
+      }
+    });
+    return valid;
+  }
+
+  return true;
+}
+
+function showErr(id, msg) {
+  const el = document.getElementById('err-' + id);
+  if (!el) return;
+  if (msg) { el.textContent = msg; el.classList.remove('hidden'); }
+  else { el.classList.add('hidden'); }
+}
+
+// ============================================================
+// Checkbox consent UI
+// ============================================================
+document.getElementById('consent').addEventListener('change', function() {
+  const check = document.getElementById('consent-check');
+  if (this.checked) check.classList.remove('hidden');
+  else check.classList.add('hidden');
+  showErr('consent', '');
+});
+
+// ============================================================
+// Submit
+// ============================================================
+async function submitForm() {
+  // Validate คำถามเสี่ยง
+  let valid = true;
+  if (risks.q10 === null) { showErr('q10', 'กรุณาเลือกคำตอบ'); valid = false; }
+  if (risks.q11 === null) { showErr('q11', 'กรุณาเลือกคำตอบ'); valid = false; }
+  if (!document.getElementById('consent').checked) {
+    showErr('consent', 'กรุณายอมรับข้อตกลงก่อนส่งข้อมูล'); valid = false;
+  }
+  if (!valid) return;
+
+  // ตรวจสอบ GAS URL
+  if (!GAS_URL || GAS_URL === 'YOUR_WEBAPP_URL_HERE') {
+    Swal.fire({
+      icon: 'warning',
+      title: 'ยังไม่ได้ตั้งค่า',
+      text: 'กรุณาใส่ Google Apps Script Web App URL ในไฟล์ index.html (ตัวแปร GAS_URL)',
+      confirmButtonColor: '#1D4ED8',
+    });
+    return;
+  }
+
+  // เตรียมข้อมูล
+  const payload = {
+    FullName:               document.getElementById('FullName').value.trim(),
+    Age:                    document.getElementById('Age').value,
+    Gender:                 document.getElementById('Gender').value,
+    School:                 document.getElementById('School').value.trim(),
+    Phone:                  document.getElementById('Phone').value.trim(),
+    SuicideThoughtLastMonth:  risks.q10,
+    SuicideAttemptLifetime:   risks.q11,
+  };
+  Object.assign(payload, scores);
+
+  // Loading
+  const submitBtn = document.getElementById('submit-btn');
+  submitBtn.disabled   = true;
+  submitBtn.textContent = '⏳ กำลังส่งข้อมูล...';
+
+  Swal.fire({
+    title: 'กำลังบันทึกข้อมูล',
+    html: 'กรุณารอสักครู่...',
+    allowOutsideClick: false,
+    didOpen: function() { Swal.showLoading(); }
+  });
+
+  try {
+    const res = await fetch(GAS_URL, {
+      method:   'POST',
+      headers:  { 'Content-Type': 'text/plain;charset=utf-8' },
+      body:     JSON.stringify({ fn: 'saveResponse', args: [payload] }),
+      redirect: 'follow',
+    });
+
+    const text = await res.text();
+    if (!text || text.trim().startsWith('<')) {
+      throw new Error('ตอบกลับผิดรูปแบบ — ตรวจสอบการตั้งค่า Deploy Web App');
+    }
+    const data = JSON.parse(text);
+
+    if (data.ok) {
+      const total  = data.totalScore;
+      const interp = data.interpretation;
+      showResult(total, interp, data.recordId);
+    } else {
+      throw new Error(data.message || 'เกิดข้อผิดพลาดในการบันทึก');
+    }
+
+  } catch (err) {
+    Swal.fire({
+      icon: 'error',
+      title: 'เกิดข้อผิดพลาด',
+      text: err.message,
+      confirmButtonColor: '#1D4ED8',
+    });
+  } finally {
+    submitBtn.disabled    = false;
+    submitBtn.textContent = 'ส่งข้อมูล ✓';
+  }
+}
+
+// ============================================================
+// แสดงผลหลังส่ง
+// ============================================================
+function showResult(score, interp, recordId) {
+  let icon    = 'success';
+  let color   = '#10B981';
+  let title   = '📋 ผลการประเมิน';
+  let message = '';
+  let advice  = '';
+
+  if (score <= 4) {
+    message = '😊 ผลการประเมินของคุณอยู่ในเกณฑ์<strong>ปกติ</strong>';
+    advice  = 'ดูแลสุขภาพจิตของตัวเองต่อไปนะ หากรู้สึกไม่ดีเมื่อไหร่ ขอความช่วยเหลือได้เสมอ';
+    color   = '#10B981';
+  } else if (score <= 9) {
+    message = '☀️ คุณมีอาการ<strong>ซึมเศร้าเล็กน้อย</strong>';
+    advice  = 'แนะนำให้ดูแลตัวเองให้มากขึ้น หากอาการไม่ดีขึ้นใน 2 สัปดาห์ ควรปรึกษาผู้เชี่ยวชาญ';
+    icon    = 'info';
+    color   = '#F59E0B';
+  } else if (score <= 14) {
+    message = '⚠️ คุณมีอาการ<strong>ซึมเศร้าปานกลาง</strong>';
+    advice  = 'แนะนำให้พบแพทย์หรือนักจิตวิทยาเพื่อรับการดูแลที่เหมาะสม เราเป็นห่วงคุณมาก';
+    icon    = 'warning';
+    color   = '#F97316';
+  } else {
+    message = '💙 เราเป็นห่วงคุณมาก คุณกำลังเผชิญกับความยากลำบาก';
+    advice  = 'กรุณาพบผู้เชี่ยวชาญด้านสุขภาพจิตโดยเร็ว ทีมงานจะติดต่อกลับเพื่อช่วยเหลือคุณ';
+    icon    = 'warning';
+    color   = '#EF4444';
+  }
+
+  Swal.fire({
+    icon:          icon,
+    title:         title,
+    html: `
+      <div style="font-family:'Noto Sans Thai',sans-serif;text-align:left">
+        <div style="background:#F8FAFC;border-radius:16px;padding:16px;margin-bottom:16px;text-align:center">
+          <div style="font-size:2.5rem;font-weight:700;color:${color}">${score}</div>
+          <div style="color:#64748B;font-size:0.8rem">คะแนน PHQ-A / 27</div>
+          <div style="font-weight:600;color:${color};margin-top:4px">${interp}</div>
+        </div>
+        <p style="color:#374151;font-size:0.9rem;line-height:1.6;margin-bottom:12px">${message}</p>
+        <div style="background:#EFF6FF;border-radius:12px;padding:12px">
+          <p style="color:#1D4ED8;font-size:0.85rem;line-height:1.6">💡 ${advice}</p>
+        </div>
+        <p style="color:#9CA3AF;font-size:0.75rem;margin-top:12px">รหัสอ้างอิง: ${recordId}</p>
+        <div style="background:#F0FDF4;border-radius:12px;padding:12px;margin-top:12px">
+          <p style="color:#065F46;font-size:0.8rem">📞 สายด่วนสุขภาพจิต <strong>1323</strong><br>พร้อมให้คำปรึกษาตลอด 24 ชั่วโมง</p>
+        </div>
+      </div>
+    `,
+    confirmButtonText:  'รับทราบ',
+    confirmButtonColor: color,
+    allowOutsideClick:  false,
+    customClass: { popup: 'swal-wide' },
+  }).then(function() {
+    // Reset form
+    location.reload();
+  });
+}
+
+// ============================================================
+// Init
+// ============================================================
+renderQuestions();
+updateScore();
+</script>
+
+</body>
+</html>
